@@ -1,23 +1,45 @@
-// index.js
-const { create } = require('@open-wa/wa-automate');
+// whatsapp-web.js + express server listo para Render
 
-create().then(client => {
-  client.onMessage(async message => {
-    const texto = message.body.toLowerCase();
-    const numero = message.from;
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const express = require('express');
+const qrcode = require('qrcode-terminal');
 
-    if (texto === 'hola') {
-      await client.sendText(numero, 'Hola, soy Lía 🦹‍♀️. Puedes preguntarme por la batería de una unidad usando: bateria [placa]');
-    } else if (texto.startsWith('bateria')) {
-      const partes = texto.split(' ');
-      if (partes.length >= 2) {
-        const placa = partes.slice(1).join(' ').toUpperCase();
-        await client.sendText(numero, `⚡ Información de la placa ${placa} está en desarrollo.`); // A futuro conectar a GSheet o API
-      } else {
-        await client.sendText(numero, 'Por favor escribe: bateria [placa]');
-      }
-    } else {
-      await client.sendText(numero, 'Comando no reconocido. Usa "bateria [placa]" o escribe "hola" para comenzar.');
-    }
-  });
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Crear cliente de WhatsApp
+const client = new Client({
+  authStrategy: new LocalAuth(),
+  puppeteer: {
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  },
+});
+
+client.on('qr', (qr) => {
+  console.log('📱 Escanea este QR para iniciar sesión:');
+  qrcode.generate(qr, { small: true });
+});
+
+client.on('ready', () => {
+  console.log('✅ Cliente de WhatsApp listo.');
+});
+
+client.on('message', async (message) => {
+  const texto = message.body.toLowerCase();
+  if (texto === 'hola') {
+    await message.reply('Hola! Soy Lía 🤖, tu asistente.');
+  } else {
+    await message.reply('Comando no reconocido. Escribe *hola* para empezar.');
+  }
+});
+
+client.initialize();
+
+// Servidor express (opcional para pruebas Render)
+app.get('/', (_, res) => {
+  res.send('Bot de WhatsApp activo 🚀');
+});
+
+app.listen(port, () => {
+  console.log(`🌐 Servidor express activo en http://localhost:${port}`);
 });
